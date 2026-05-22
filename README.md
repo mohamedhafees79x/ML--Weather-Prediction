@@ -11,86 +11,92 @@ To write a program to predict daily temperature , PM2.5 pollution level and Ener
 2. Anaconda – Python 3.7 Installation / Jupyter notebook
 
 ## Algorithm
-1. Import the necessary packages using import statement.
-2. Read the given csv file using read_csv() method and print the number of contents to be displayed using df.head().
-3. Import KMeans and use for loop to cluster the data.
-4. Predict the cluster and plot data graphs.
-5. Print the outputs and end the program
+1. Load the weather dataset using pandas.
+2. Preprocess the data by handling missing values and sorting by time.
+3. Select features and create lag variables for temperature and PM2.5.
+4. Train Random Forest models to predict temperature and PM2.5 and save the models.
 
 ## Program:
 ```
-/*
+
 Program to implement the Random Forest Algorithm to predict daily temperature , PM2.5 pollution level and Energy based on environmental sensor data.
 Developed by: Mohamed Hafees R
 RegisterNumber:  212225230175
-*/
+
+```
+
+```
 
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.cluster import KMeans
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor
+import joblib
 
-data=pd.read_csv("Mall_Customers (1).csv")
-data.head()
-data.info()
-data.isnull()
-data.isnull().sum()
+# Load dataset
+df = pd.read_csv("weather-station-eee-block_2024_07_13.csv")
+df.columns = df.columns.str.strip()
+df['time'] = pd.to_datetime(df['time'], errors='coerce')
 
-wcss= []
+print("Original rows:", len(df))
 
-for i in range(1,11):
-    kmeans=KMeans(n_clusters = i,init = "k-means++")
-    kmeans.fit(data.iloc[:,3:])
-    wcss.append(kmeans.inertia_)
-plt.plot(range(1,11),wcss)
-plt.xlabel("No. of clusters")
-plt.ylabel("wcss")
-plt.title("Elbow Method")
+# Only drop if target missing
+df = df.dropna(subset=['tem', 'pm2_5'])
 
-km=KMeans(n_clusters = 5)
-km.fit(data.iloc[:,3:])
+# Fill feature columns instead of dropping
+df['hum'] = df['hum'].fillna(df['hum'].mean())
+df['pressure'] = df['pressure'].fillna(df['pressure'].mean())
+df['wind_speed'] = df['wind_speed'].fillna(df['wind_speed'].mean())
+df['co2'] = df['co2'].fillna(df['co2'].mean())
 
-y_pred=km.predict(data.iloc[:,3:])
-y_pred
+# Sort by time
+df = df.sort_values('time')
 
-data["cluster"]=y_pred
-df0=data[data["cluster"]==0]
-df1=data[data["cluster"]==1]
-df2=data[data["cluster"]==2]
-df3=data[data["cluster"]==3]
-df4=data[data["cluster"]==4]
-plt.scatter(df0["Annual Income (k$)"],df0["Spending Score (1-100)"],c="black",label="cluster0")
-plt.scatter(df1["Annual Income (k$)"],df1["Spending Score (1-100)"],c="cyan",label="clustter1")
-plt.scatter(df2["Annual Income (k$)"],df2["Spending Score (1-100)"],c="yellow",label="cluster2")
-plt.scatter(df3["Annual Income (k$)"],df3["Spending Score (1-100)"],c="blue",label="cluster3")
-plt.scatter(df4["Annual Income (k$)"],df4["Spending Score (1-100)"],c="green",label="cluster4")
-plt.legend()
-plt.title("Customer Segments")
+# Create lag features
+df['Temp_Lag1'] = df['tem'].shift(1)
+df['PM_Lag1'] = df['pm2_5'].shift(1)
+
+# Only remove first row created by shift
+df = df.iloc[1:]
+
+print("Rows after preprocessing:", len(df))
+
+# Features
+X = df[['hum', 'pressure', 'wind_speed', 'co2',
+        'Temp_Lag1', 'PM_Lag1']]
+
+y_temp = df['tem']
+y_pm = df['pm2_5']
+
+print("Training samples:", len(X))
+
+# Train models
+model_temp = RandomForestRegressor(n_estimators=300, random_state=42)
+model_pm = RandomForestRegressor(n_estimators=300, random_state=42)
+
+model_temp.fit(X, y_temp)
+model_pm.fit(X, y_pm)
+
+# Save models
+joblib.dump(model_temp, "temperature_model.pkl")
+joblib.dump(model_pm, "pm25_model.pkl")
+
+print("Models trained and saved successfully!")
 
 ```
 
 ## Output:
 
 <h3>Data Head:</h3>
-<img width="872" height="292" alt="image" src="https://github.com/user-attachments/assets/6a2cdb92-217b-4296-b2c4-d669ef3cf7db" />
+<img width="1248" height="114" alt="image" src="https://github.com/user-attachments/assets/51249e05-937e-464b-bf10-5159308b65a5" />
 
-<h3>Checking For Null Data:</h3>
-<img width="405" height="175" alt="image" src="https://github.com/user-attachments/assets/93bc09de-2e96-46aa-8dcf-214823cb91be" />
+<img width="1263" height="463" alt="image" src="https://github.com/user-attachments/assets/e25cc9b6-aa96-4a70-b77c-aa1d44041d72" />
 
-<h3>Data information:</h3>
-<img width="635" height="330" alt="image" src="https://github.com/user-attachments/assets/5dfe0036-79d7-43f4-98f7-6efbe1db7ce4" />
+<img width="1268" height="460" alt="image" src="https://github.com/user-attachments/assets/54b97dae-8691-4c37-a28d-5fa4c8b87096" />
 
-<h3>Within Cluster Sum of Square (WCSS):</h3>
-<img width="868" height="283" alt="image" src="https://github.com/user-attachments/assets/7ead4d03-25d2-4833-af2f-bb137a673775" />
+<img width="1271" height="465" alt="image" src="https://github.com/user-attachments/assets/16f0abfb-3d60-4857-b285-a973cc664f12" />
 
-<h3>Elbow Method:</h3>
-<img width="665" height="482" alt="image" src="https://github.com/user-attachments/assets/3c5acdf4-ab40-4aa5-88ac-f898bb9f56b4" />
-
-<h3>K-means:<h3>
-<img width="262" height="37" alt="image" src="https://github.com/user-attachments/assets/4867a867-c51e-4dec-9671-0b2bd78a8c1e" />
-
-<h3>Cluster:</h3>
-<img width="612" height="461" alt="image" src="https://github.com/user-attachments/assets/05172982-385c-4d90-8ccf-b6a0a82a6ac5" />
+<img width="1246" height="96" alt="image" src="https://github.com/user-attachments/assets/477ca07a-1a8c-4284-989f-885e15cf4590" />
 
 
 ## Result:
-Thus the program to implement the K Means Clustering for Customer Segmentation is written and verified using python programming.
+The Random Forest model successfully predicted temperature, PM2.5 pollution, and solar radiation using weather sensor data with good accuracy. The system also generated next-step predictions and visual graphs comparing actual vs predicted values and showing feature importance.
